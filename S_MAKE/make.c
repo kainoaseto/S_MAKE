@@ -11,8 +11,8 @@ int make(char* makefile)
 
 	HANDLE curr_target_h;
 	HANDLE curr_dep_h;
-	FILETIME* curr_target_ft;
-	FILETIME* curr_dep_ft;
+	FILETIME curr_target_ft;
+	FILETIME curr_dep_ft;
 
 	char current_char;
 	BOOL in_comment = FALSE;
@@ -26,14 +26,34 @@ int make(char* makefile)
 
 	// 8192 is the max commandline length for WinXP which I think is good enough
 	char cmd[MAX_CMDLEN];
+	int cmd_status;
 	
+	strcpy_s(current_target, MAX_PATH, "");
+	strcpy_s(current_dep, MAX_PATH, "");
+	strcpy_s(cmd, MAX_PATH, "");
 
 	// Parse lines
 	while ((current_char = fgetc(file)) != EOF)
 	{
-		if (rebuild)
+		if (rebuild && newline)
 		{
-			strcat_s(cmd, MAX_CMDLEN, current_char);
+			if (current_char == '\n')
+			{
+
+				cmd_status = ExecuteCommand(cmd);
+				if (cmd_status != 0)
+				{
+					printf("Error: cmd %s exited with status %i\n", cmd, cmd_status);
+					return cmd_status;
+				}
+				strcpy_s(cmd, MAX_CMDLEN, "");
+				continue;
+			}
+			if(current_char != '\r')
+				append(cmd, current_char);
+
+			continue;
+			//strcat_s(cmd, MAX_CMDLEN, &current_char);
 			// TODO: If we are rebuilding, jump to next line which MUST not be whitespace and then 
 			// copy the commands in, strip whitespace from front, and put into util(ExecuteCommand)
 			// If that fails then break and return that exit code
@@ -100,7 +120,9 @@ int make(char* makefile)
 		// Get our target
 		if (current_char != ' ' && current_char != ':' && !parse_deps)
 		{
-			strcat_s(current_target, MAX_PATH, current_char);
+			newline = FALSE;
+			//strcat_s(current_target, MAX_PATH, &current_char);
+			append(current_target, current_char);
 			continue;
 		}
 
@@ -111,7 +133,7 @@ int make(char* makefile)
 			curr_target_h = CreateFile(
 				current_target,			// lpFileName
 				GENERIC_READ,			// dwDesiredAccess
-				0,						// dwShareMode
+				FILE_SHARE_READ,		// dwShareMode
 				NULL,					// lpSecurityAttributes
 				OPEN_EXISTING,			// dwCreationDisposition
 				NULL,					// dwFlagsAndAttributes
@@ -126,7 +148,7 @@ int make(char* makefile)
 			}
 		
 			// If we cant get the filetime just rebuild
-			if (!GetFileTime(curr_target_h, NULL, curr_target_ft, NULL))
+			if (!GetFileTime(curr_target_h, NULL, &curr_target_ft, NULL))
 			{
 				rebuild = TRUE;
 				continue;
@@ -150,7 +172,7 @@ int make(char* makefile)
 					curr_dep_h = CreateFile(
 						current_dep,			// lpFileName
 						GENERIC_READ,			// dwDesiredAccess
-						0,						// dwShareMode
+						FILE_SHARE_READ,		// dwShareMode
 						NULL,					// lpSecurityAttributes
 						OPEN_EXISTING,			// dwCreationDisposition
 						NULL,					// dwFlagsAndAttributes
@@ -165,14 +187,14 @@ int make(char* makefile)
 					}
 
 					// If we cant get the filetime then something funky is going on and we'll error out
-					if (!GetFileTime(curr_dep_h, NULL, curr_dep_ft, NULL))
+					if (!GetFileTime(curr_dep_h, NULL, &curr_dep_ft, NULL))
 					{
 						printf("Couldn't get depdency %s filetime!\n", current_dep);
 						return -1;
 					}
 
 					// Check if we need to rebuild
-					if (CompareFileTime(curr_target_ft, curr_dep_ft) != 0)
+					if (CompareFileTime(&curr_target_ft, &curr_dep_ft) != 0)
 					{
 						rebuild = TRUE;
 						continue;
@@ -188,8 +210,8 @@ int make(char* makefile)
 			}
 
 			// Append the next char of the name
-			strcat_s(current_dep, MAX_PATH, current_char);
-			
+			//strcat_s(current_dep, MAX_PATH, &current_char);
+			append(current_dep, current_char);
 		}
 
 		

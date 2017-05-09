@@ -36,5 +36,11 @@
     <Text Include="dj.txt">
       <Filter>Resources</Filter>
     </Text>
+    <Text Include="d.txt">
+      <Filter>Resources</Filter>
+    </Text>
+    <Text Include="j.txt">
+      <Filter>Resources</Filter>
+    </Text>
   </ItemGroup>
 </Project>

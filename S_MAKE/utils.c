@@ -42,3 +42,15 @@ int ExecuteCommand(char* cmd)
 	return (int)exit_status;
 
 }
+
+void append(char* str, char c)
+{
+	size_t len = strlen(str);
+	str[len] = c;
+	str[len + 1] = '\0';
+}
+
+void stripleadingws(char* str)
+{
+
+}

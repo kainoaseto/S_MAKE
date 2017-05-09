@@ -9,4 +9,6 @@
 // the exit status is returned as an int
 int ExecuteCommand(char* cmd);
 
+void append(char* str, char c);
+
 #endif // __UTILS_H__
